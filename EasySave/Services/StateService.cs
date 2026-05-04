@@ -55,3 +55,21 @@ namespace EasySave.Services
         }
     }
 }
+using System;
+
+namespace EasySaveApp.Models
+{
+    public class BackupState
+    {
+        public string JobName { get; set; }
+        public string LastActionTimestamp { get; set; }
+        public string Status { get; set; } // Active, Inactive, etc.
+        public int TotalFiles { get; set; }
+        public long TotalSize { get; set; }
+        public int Progress { get; set; }
+        public int RemainingFiles { get; set; }
+        public long RemainingSize { get; set; }
+        public string CurrentSource { get; set; }
+        public string CurrentDest { get; set; }
+    }
+}
