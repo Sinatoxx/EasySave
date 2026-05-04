@@ -6,10 +6,10 @@ namespace EasySave.Services
     {
         private string _currentLanguage = "en";
         private Dictionary<string, string> _translations = new();
-
+#modification hereejfejfnjenfjenfjebnfjdbezjfnejb
         public LanguageService()
         {
-            SetLanguage("en");
+            SetLanguage("english");
         }
 
         public void SetLanguage(string lang)
