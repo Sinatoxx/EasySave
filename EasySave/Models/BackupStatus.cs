@@ -4,7 +4,6 @@
     {
         Active,
         Inactive,
-        Error
-#modification
+        Error,
     }
 }
