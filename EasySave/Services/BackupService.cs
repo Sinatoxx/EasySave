@@ -49,11 +49,11 @@ namespace EasySave.Services
             }
         }
 
-        public void ExecuteAll()
-        {
-            foreach (BackupJob job in _jobs)
-                Execute(job);
-        }
+        
+        
+       
+                
+        
 
         private IBackupStrategy ResolveStrategy(BackupType type)
         {
