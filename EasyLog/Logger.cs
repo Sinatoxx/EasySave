@@ -1,26 +1,41 @@
-﻿using System.Text.Json;
+using System.Text.Json;
+using System.Xml.Serialization;
 
 namespace EasyLog
 {
+    public enum LogFormat { JSON, XML }
+
     public class Logger
     {
         private readonly string _logDirectory;
+        private LogFormat _format;
 
-        public Logger()
+        public Logger(LogFormat format = LogFormat.JSON)
         {
+            _format = format;
             _logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
             EnsureDirectory(_logDirectory);
         }
 
+        public void SetFormat(LogFormat format) => _format = format;
+
         public void WriteEntry(LogEntry entry)
         {
-            string path = GetDailyLogPath();
-            List<LogEntry> entries = new List<LogEntry>();
+            if (_format == LogFormat.XML)
+                WriteXml(entry);
+            else
+                WriteJson(entry);
+        }
+
+        private void WriteJson(LogEntry entry)
+        {
+            string path = GetDailyLogPath("json");
+            List<LogEntry> entries = new();
 
             if (File.Exists(path))
             {
                 string existing = File.ReadAllText(path);
-                entries = JsonSerializer.Deserialize<List<LogEntry>>(existing) ?? new List<LogEntry>();
+                entries = JsonSerializer.Deserialize<List<LogEntry>>(existing) ?? new();
             }
 
             entries.Add(entry);
@@ -28,9 +43,28 @@ namespace EasyLog
             File.WriteAllText(path, json);
         }
 
-        private string GetDailyLogPath()
+        private void WriteXml(LogEntry entry)
         {
-            string fileName = DateTime.Now.ToString("yyyy-MM-dd") + ".json";
+            string path = GetDailyLogPath("xml");
+            List<LogEntry> entries = new();
+
+            if (File.Exists(path))
+            {
+                XmlSerializer serializer = new(typeof(List<LogEntry>));
+                using FileStream fs = new(path, FileMode.Open);
+                entries = (List<LogEntry>?)serializer.Deserialize(fs) ?? new();
+            }
+
+            entries.Add(entry);
+
+            XmlSerializer writer = new(typeof(List<LogEntry>));
+            using FileStream output = new(path, FileMode.Create);
+            writer.Serialize(output, entries);
+        }
+
+        private string GetDailyLogPath(string extension)
+        {
+            string fileName = DateTime.Now.ToString("yyyy-MM-dd") + "." + extension;
             return Path.Combine(_logDirectory, fileName);
         }
 
