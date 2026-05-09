@@ -8,6 +8,6 @@
         public string TargetFile { get; set; } = string.Empty;
         public long FileSize { get; set; }
         public long TransferTimeMs { get; set; }
-        public long EncryptionTimeMs { get; set; }
+        public long CryptoTimeMs { get; set; }
     }
 }

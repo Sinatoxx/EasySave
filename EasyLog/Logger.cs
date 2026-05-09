@@ -1,65 +1,53 @@
-using System.Text.Json;
-using System.Xml.Serialization;
-
 namespace EasyLog
 {
-    public enum LogFormat { JSON, XML }
-
     public class Logger
     {
         private readonly string _logDirectory;
-        private LogFormat _format;
+        private ILogExporter _exporter;
 
-        public Logger(LogFormat format = LogFormat.JSON)
+        public Logger()
         {
-            _format = format;
+            _exporter = new JsonLogExporter();
             _logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
             EnsureDirectory(_logDirectory);
         }
 
-        public void SetFormat(LogFormat format) => _format = format;
+        public void SetExporter(ILogExporter exporter) => _exporter = exporter;
 
         public void WriteEntry(LogEntry entry)
         {
-            if (_format == LogFormat.XML)
-                WriteXml(entry);
-            else
-                WriteJson(entry);
-        }
+            string extension = _exporter is JsonLogExporter ? "json" : "xml";
+            string path = GetDailyLogPath(extension);
 
-        private void WriteJson(LogEntry entry)
-        {
-            string path = GetDailyLogPath("json");
             List<LogEntry> entries = new();
 
             if (File.Exists(path))
-            {
-                string existing = File.ReadAllText(path);
-                entries = JsonSerializer.Deserialize<List<LogEntry>>(existing) ?? new();
-            }
+                entries = LoadExisting(path);
 
             entries.Add(entry);
-            string json = JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(path, json);
+            _exporter.Export(path, entries);
         }
 
-        private void WriteXml(LogEntry entry)
+        private List<LogEntry> LoadExisting(string path)
         {
-            string path = GetDailyLogPath("xml");
-            List<LogEntry> entries = new();
-
-            if (File.Exists(path))
+            try
             {
-                XmlSerializer serializer = new(typeof(List<LogEntry>));
-                using FileStream fs = new(path, FileMode.Open);
-                entries = (List<LogEntry>?)serializer.Deserialize(fs) ?? new();
+                if (_exporter is JsonLogExporter)
+                {
+                    string json = File.ReadAllText(path);
+                    return System.Text.Json.JsonSerializer.Deserialize<List<LogEntry>>(json) ?? new();
+                }
+                else
+                {
+                    System.Xml.Serialization.XmlSerializer serializer = new(typeof(List<LogEntry>));
+                    using FileStream fs = new(path, FileMode.Open);
+                    return (List<LogEntry>?)serializer.Deserialize(fs) ?? new();
+                }
             }
-
-            entries.Add(entry);
-
-            XmlSerializer writer = new(typeof(List<LogEntry>));
-            using FileStream output = new(path, FileMode.Create);
-            writer.Serialize(output, entries);
+            catch
+            {
+                return new();
+            }
         }
 
         private string GetDailyLogPath(string extension)
