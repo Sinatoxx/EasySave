@@ -62,5 +62,7 @@ namespace EasySave.ViewModels
         public List<BackupState> GetStates() => _stateService.GetAllStates();
         public void SetLanguage(string lang) => _langService.SetLanguage(lang);
         public string Translate(string key) => _langService.Translate(key);
+        public string GetLogFormat() => _configService.GetLogFormat();
+        public void SetLogFormat(string format) => _configService.SetLogFormat(format);
     }
 }

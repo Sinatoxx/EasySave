@@ -1,4 +1,4 @@
-﻿using EasyLog;
+using EasyLog;
 using EasySave.Services;
 using EasySave.ViewModels;
 using EasySave.Views;
@@ -17,9 +17,13 @@ view.Run();
 
 static BackupManagerViewModel ComposeDependencies()
 {
-    Logger logger = new Logger();
-    StateService stateService = new StateService();
     ConfigService configService = new ConfigService();
+    string format = configService.GetLogFormat();
+
+    Logger logger = new Logger();
+    logger.SetExporter(format == "XML" ? new XmlLogExporter() : new JsonLogExporter());
+
+    StateService stateService = new StateService();
     LanguageService langService = new LanguageService();
     BackupService backupService = new BackupService(logger);
     backupService.AddObserver(stateService);

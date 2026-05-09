@@ -57,6 +57,7 @@ namespace EasySave.Views
             Console.WriteLine($"5. {_viewModel.Translate("menu.execute.all")}");
             Console.WriteLine($"6. {_viewModel.Translate("menu.states")}");
             Console.WriteLine($"7. {_viewModel.Translate("menu.language")}");
+            Console.WriteLine($"8. Log format (current: {_viewModel.GetLogFormat()})");
             Console.WriteLine($"0. {_viewModel.Translate("menu.exit")}");
             Console.Write(_viewModel.Translate("menu.choice") + " ");
         }
@@ -106,6 +107,20 @@ namespace EasySave.Views
                     {
                         _viewModel.SetLanguage(lang);
                         ShowMessage(_viewModel.Translate("language.changed"));
+                    }
+                    break;
+
+                case "8":
+                    Console.Write("Log format (JSON/XML): ");
+                    string? logFormat = Console.ReadLine()?.Trim().ToUpper();
+                    if (logFormat == "JSON" || logFormat == "XML")
+                    {
+                        _viewModel.SetLogFormat(logFormat);
+                        ShowMessage($"Log format set to {logFormat}. Restart to apply.");
+                    }
+                    else
+                    {
+                        ShowError("Invalid format. Choose JSON or XML.");
                     }
                     break;
 
