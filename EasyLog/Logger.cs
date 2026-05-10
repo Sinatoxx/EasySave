@@ -1,36 +1,58 @@
-﻿using System.Text.Json;
-
 namespace EasyLog
 {
     public class Logger
     {
         private readonly string _logDirectory;
+        private ILogExporter _exporter;
 
         public Logger()
         {
+            _exporter = new JsonLogExporter();
             _logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
             EnsureDirectory(_logDirectory);
         }
 
+        public void SetExporter(ILogExporter exporter) => _exporter = exporter;
+
         public void WriteEntry(LogEntry entry)
         {
-            string path = GetDailyLogPath();
-            List<LogEntry> entries = new List<LogEntry>();
+            string extension = _exporter is JsonLogExporter ? "json" : "xml";
+            string path = GetDailyLogPath(extension);
+
+            List<LogEntry> entries = new();
 
             if (File.Exists(path))
-            {
-                string existing = File.ReadAllText(path);
-                entries = JsonSerializer.Deserialize<List<LogEntry>>(existing) ?? new List<LogEntry>();
-            }
+                entries = LoadExisting(path);
 
             entries.Add(entry);
-            string json = JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(path, json);
+            _exporter.Export(path, entries);
         }
 
-        private string GetDailyLogPath()
+        private List<LogEntry> LoadExisting(string path)
         {
-            string fileName = DateTime.Now.ToString("yyyy-MM-dd") + ".json";
+            try
+            {
+                if (_exporter is JsonLogExporter)
+                {
+                    string json = File.ReadAllText(path);
+                    return System.Text.Json.JsonSerializer.Deserialize<List<LogEntry>>(json) ?? new();
+                }
+                else
+                {
+                    System.Xml.Serialization.XmlSerializer serializer = new(typeof(List<LogEntry>));
+                    using FileStream fs = new(path, FileMode.Open);
+                    return (List<LogEntry>?)serializer.Deserialize(fs) ?? new();
+                }
+            }
+            catch
+            {
+                return new();
+            }
+        }
+
+        private string GetDailyLogPath(string extension)
+        {
+            string fileName = DateTime.Now.ToString("yyyy-MM-dd") + "." + extension;
             return Path.Combine(_logDirectory, fileName);
         }
 

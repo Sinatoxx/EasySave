@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using EasySave.Models;
 
 namespace EasySave.Services
@@ -6,17 +6,21 @@ namespace EasySave.Services
     public class ConfigService
     {
         private readonly string _configFilePath;
+        private readonly string _settingsFilePath;
 
         public ConfigService()
         {
-            _configFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
-            EnsureFileExists();
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            _configFilePath = Path.Combine(baseDir, "config.json");
+            _settingsFilePath = Path.Combine(baseDir, "settings.json");
+            EnsureFileExists(_configFilePath, "[]");
+            EnsureFileExists(_settingsFilePath, "{\"LogFormat\":\"JSON\"}");
         }
 
         public List<BackupJob> LoadJobs()
         {
             string json = File.ReadAllText(_configFilePath);
-            return JsonSerializer.Deserialize<List<BackupJob>>(json) ?? new List<BackupJob>();
+            return JsonSerializer.Deserialize<List<BackupJob>>(json) ?? new();
         }
 
         public void SaveJobs(List<BackupJob> jobs)
@@ -25,10 +29,24 @@ namespace EasySave.Services
             File.WriteAllText(_configFilePath, json);
         }
 
-        private void EnsureFileExists()
+        public string GetLogFormat()
         {
-            if (!File.Exists(_configFilePath))
-                File.WriteAllText(_configFilePath, "[]");
+            string json = File.ReadAllText(_settingsFilePath);
+            var settings = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+            return settings != null && settings.TryGetValue("LogFormat", out string? format) ? format : "JSON";
+        }
+
+        public void SetLogFormat(string format)
+        {
+            var settings = new Dictionary<string, string> { { "LogFormat", format } };
+            string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(_settingsFilePath, json);
+        }
+
+        private void EnsureFileExists(string path, string defaultContent)
+        {
+            if (!File.Exists(path))
+                File.WriteAllText(path, defaultContent);
         }
     }
 }
