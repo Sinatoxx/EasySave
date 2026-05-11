@@ -1,99 +1,89 @@
-﻿using EasyLog;
-using EasySave.Factory;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using EasySave.Models;
 using EasySave.Services;
+using EasySave.Observers;
 
 namespace EasySave.ViewModels
 {
-    public class BackupManagerViewModel
+    public class BackupManagerViewModel : INotifyPropertyChanged, IBackupObserver
     {
         private readonly BackupService _backupService;
         private readonly ConfigService _configService;
-        private readonly StateService _stateService;
         private readonly LanguageService _langService;
-        private readonly Logger _logger;
-        private AppSettings _settings;
 
-        public List<BackupJob> Jobs { get; private set; } = new();
-        public int MaxJobs => 5;
+        // Liste illimitée de travaux (ObservableCollection met à jour l'UI automatiquement)
+        public ObservableCollection<BackupJob> Jobs { get; set; }
 
-        public BackupManagerViewModel(
-            BackupService backupService,
-            ConfigService configService,
-            StateService stateService,
-            LanguageService langService,
-            Logger logger)
+        private double _currentProgress;
+        public double CurrentProgress
+        {
+            get => _currentProgress;
+            set { _currentProgress = value; OnPropertyChanged(); }
+        }
+
+        private string _currentStatus;
+        public string CurrentStatus
+        {
+            get => _currentStatus;
+            set { _currentStatus = value; OnPropertyChanged(); }
+        }
+
+        public BackupManagerViewModel(BackupService backupService, ConfigService configService, LanguageService langService)
         {
             _backupService = backupService;
             _configService = configService;
-            _stateService = stateService;
             _langService = langService;
-            _logger = logger;
 
-            _settings = _configService.LoadSettings();
-            _langService.SetLanguage(_settings.Language);
-            ApplyLogFormat(_settings.LogFormat);
+            // Chargement des travaux depuis le JSON
+            Jobs = new ObservableCollection<BackupJob>(_configService.LoadJobs());
 
-            Jobs = _configService.LoadJobs();
-            _backupService.SetJobs(Jobs);
+            // On s'abonne aux notifications du moteur de sauvegarde
+            _backupService.AddObserver(this);
         }
 
-        public bool CanAddJob() => Jobs.Count < MaxJobs;
-
-        public bool AddJob(string name, string source, string target, BackupType type)
+        public void AddJob(string name, string source, string target, BackupType type)
         {
-            if (!CanAddJob()) return false;
-            int id = Jobs.Count > 0 ? Jobs.Max(j => j.Id) + 1 : 1;
-            BackupJob job = BackupJobFactory.CreateJob(id, name, source, target, type);
-            Jobs.Add(job);
-            _configService.SaveJobs(Jobs);
-            _backupService.SetJobs(Jobs);
-            return true;
+            var newJob = new BackupJob { Id = Jobs.Count + 1, Name = name, SourcePath = source, TargetPath = target, Type = type };
+            Jobs.Add(newJob);
+            _configService.SaveJobs(new List<BackupJob>(Jobs));
         }
 
-        public void RemoveJob(int id)
+        public void ExecuteJob(BackupJob job)
         {
-            BackupJob? job = Jobs.FirstOrDefault(j => j.Id == id);
-            if (job == null) return;
-            Jobs.Remove(job);
-            _configService.SaveJobs(Jobs);
-            _backupService.SetJobs(Jobs);
+            // Lancer en arrière-plan pour ne pas freezer l'interface WPF
+            Task.Run(() => _backupService.Execute(job));
         }
 
-        public void ExecuteJob(int id)
+        public void ExecuteAll()
         {
-            BackupJob? job = Jobs.FirstOrDefault(j => j.Id == id);
-            if (job != null) _backupService.Execute(job);
+            Task.Run(() => _backupService.ExecuteAll());
         }
 
-        public void ExecuteJobs(List<int> ids) => _backupService.ExecuteRange(ids);
-        public void ExecuteAll() => _backupService.ExecuteAll();
-        public List<BackupState> GetStates() => _stateService.GetAllStates();
-
-        public void SetLanguage(string lang)
+        // --- Implémentation de IBackupObserver ---
+        public void OnFileProcessed(BackupState state)
         {
-            _langService.SetLanguage(lang);
-            _settings.Language = lang;
-            _configService.SaveSettings(_settings);
+            CurrentProgress = state.Progress;
+            CurrentStatus = $"Copying: {state.CurrentSourceFile}";
         }
 
-        public void SetLogFormat(LogFormat format)
+        public void OnJobCompleted(string jobName)
         {
-            _settings.LogFormat = format;
-            ApplyLogFormat(format);
-            _configService.SaveSettings(_settings);
+            CurrentStatus = $"{jobName} Completed!";
+            CurrentProgress = 100;
         }
 
-        public LogFormat GetCurrentLogFormat() => _settings.LogFormat;
-
-        private void ApplyLogFormat(LogFormat format)
+        public void OnJobError(string jobName, string error)
         {
-            ILogExporter exporter = format == LogFormat.Xml
-                ? new XmlLogExporter()
-                : new JsonLogExporter();
-            _logger.SetExporter(exporter);
+            CurrentStatus = $"Error on {jobName}: {error}";
         }
 
-        public string Translate(string key) => _langService.Translate(key);
+        // --- Logique de mise à jour WPF ---
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
     }
 }
