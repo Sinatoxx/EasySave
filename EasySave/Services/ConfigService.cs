@@ -10,17 +10,15 @@ namespace EasySave.Services
 
         public ConfigService()
         {
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            _configFilePath = Path.Combine(baseDir, "config.json");
-            _settingsFilePath = Path.Combine(baseDir, "settings.json");
-            EnsureFileExists(_configFilePath, "[]");
-            EnsureFileExists(_settingsFilePath, "{\"LogFormat\":\"JSON\"}");
+            _configFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
+            _settingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+            EnsureFileExists();
         }
 
         public List<BackupJob> LoadJobs()
         {
             string json = File.ReadAllText(_configFilePath);
-            return JsonSerializer.Deserialize<List<BackupJob>>(json) ?? new();
+            return JsonSerializer.Deserialize<List<BackupJob>>(json) ?? new List<BackupJob>();
         }
 
         public void SaveJobs(List<BackupJob> jobs)
@@ -29,24 +27,29 @@ namespace EasySave.Services
             File.WriteAllText(_configFilePath, json);
         }
 
-        public string GetLogFormat()
+        public AppSettings LoadSettings()
         {
+            if (!File.Exists(_settingsFilePath))
+            {
+                AppSettings defaultSettings = new AppSettings();
+                SaveSettings(defaultSettings);
+                return defaultSettings;
+            }
+
             string json = File.ReadAllText(_settingsFilePath);
-            var settings = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
-            return settings != null && settings.TryGetValue("LogFormat", out string? format) ? format : "JSON";
+            return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
         }
 
-        public void SetLogFormat(string format)
+        public void SaveSettings(AppSettings settings)
         {
-            var settings = new Dictionary<string, string> { { "LogFormat", format } };
             string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(_settingsFilePath, json);
         }
 
-        private void EnsureFileExists(string path, string defaultContent)
+        private void EnsureFileExists()
         {
-            if (!File.Exists(path))
-                File.WriteAllText(path, defaultContent);
+            if (!File.Exists(_configFilePath))
+                File.WriteAllText(_configFilePath, "[]");
         }
     }
 }
