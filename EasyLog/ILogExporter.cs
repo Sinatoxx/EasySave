@@ -1,4 +1,7 @@
-public interface ILogExporter
+namespace EasyLog
 {
-    void Export(string path, List<object> entries);
+    public interface ILogExporter
+    {
+        void Export(string path, List<LogEntry> entries);
+    }
 }
