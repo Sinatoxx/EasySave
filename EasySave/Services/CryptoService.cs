@@ -5,7 +5,7 @@ using System.Text;
 
 namespace EasySave.Services
 {
-    internal class CryptoService
+    public class CryptoService
     {
     
         public long Encrypt(string src, string dst)

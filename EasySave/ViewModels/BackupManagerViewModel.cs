@@ -7,7 +7,7 @@ using EasySave.Observers;
 
 namespace EasySave.ViewModels
 {
-    public class BackupManagerViewModel : INotifyPropertyChanged, IBackupObserver
+    public class BackupManagerViewModel : IBackupObserver, INotifyPropertyChanged
     {
         private readonly BackupService _backupService;
         private readonly ConfigService _configService;
@@ -62,19 +62,19 @@ namespace EasySave.ViewModels
         }
 
         // --- Implémentation de IBackupObserver ---
-        public void OnFileProcessed(BackupState state)
+        public override void OnFileProcessed(BackupState state)
         {
             CurrentProgress = state.Progress;
             CurrentStatus = $"Copying: {state.CurrentSourceFile}";
         }
 
-        public void OnJobCompleted(string jobName)
+        public override void OnJobCompleted(string jobName)
         {
             CurrentStatus = $"{jobName} Completed!";
             CurrentProgress = 100;
         }
 
-        public void OnJobError(string jobName, string error)
+        public override void OnJobError(string jobName, string error)
         {
             CurrentStatus = $"Error on {jobName}: {error}";
         }

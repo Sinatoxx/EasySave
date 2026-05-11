@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace EasySave.Services
 {
-    internal class BusinessAppService
+    public class BusinessAppService
     {
         
         public bool IsBusinessAppRunning(string name)
