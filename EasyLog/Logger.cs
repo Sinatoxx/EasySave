@@ -4,6 +4,7 @@ namespace EasyLog
     {
         private readonly string _logDirectory;
         private ILogExporter _exporter;
+        private static readonly object _fileLock = new();
 
         public Logger()
         {
@@ -16,16 +17,19 @@ namespace EasyLog
 
         public void WriteEntry(LogEntry entry)
         {
-            string extension = _exporter is JsonLogExporter ? "json" : "xml";
-            string path = GetDailyLogPath(extension);
+            lock (_fileLock)
+            {
+                string extension = _exporter is JsonLogExporter ? "json" : "xml";
+                string path = GetDailyLogPath(extension);
 
-            List<LogEntry> entries = new();
+                List<LogEntry> entries = new();
 
-            if (File.Exists(path))
-                entries = LoadExisting(path);
+                if (File.Exists(path))
+                    entries = LoadExisting(path);
 
-            entries.Add(entry);
-            _exporter.Export(path, entries);
+                entries.Add(entry);
+                _exporter.Export(path, entries);
+            }
         }
 
         private List<LogEntry> LoadExisting(string path)
