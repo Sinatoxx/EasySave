@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using EasyLog;
 using EasySave.Models;
 using EasySave.Services;
@@ -7,19 +7,23 @@ namespace EasySave.Strategies
 {
     public abstract class IBackupStrategy
     {
-        public abstract void Execute(BackupJob job, Logger logger, StateService stateService);
+        public abstract void Execute(BackupJob job, Logger logger, StateService? stateService, BusinessAppService businessAppService, CryptoService cryptoService);
         protected abstract List<FileInfo> GetFilesToCopy(string source, string target);
 
-        protected void CopyFile(string src, string dst, string jobName, Logger logger)
+        protected void CopyFile(string src, string dst, string jobName, Logger logger, CryptoService cryptoService)
         {
             long fileSize = new FileInfo(src).Length;
             long transferTime;
+            long cryptoTimeMs = 0;
 
             try
             {
                 DateTime start = DateTime.Now;
                 File.Copy(src, dst, true);
                 transferTime = (long)(DateTime.Now - start).TotalMilliseconds;
+
+                if (cryptoService.MustEncrypt(src))
+                    cryptoTimeMs = cryptoService.Encrypt(src, dst);
             }
             catch
             {
@@ -33,7 +37,8 @@ namespace EasySave.Strategies
                 SourceFile = src,
                 TargetFile = dst,
                 FileSize = fileSize,
-                TransferTimeMs = transferTime
+                TransferTimeMs = transferTime,
+                CryptoTimeMs = cryptoTimeMs
             });
         }
 

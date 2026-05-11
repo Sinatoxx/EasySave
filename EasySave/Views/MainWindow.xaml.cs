@@ -1,6 +1,7 @@
-﻿using System.Windows;
+using System.Windows;
 using EasySave.ViewModels;
 using EasySave.Services;
+using EasySave.Models;
 using EasyLog;
 
 namespace EasySaveGUI
@@ -13,23 +14,23 @@ namespace EasySaveGUI
         {
             InitializeComponent();
 
-            // 1. Initialisation des services (comme dans Program.cs)
             Logger logger = new Logger();
             BusinessAppService businessService = new BusinessAppService();
             CryptoService cryptoService = new CryptoService();
-
-            BackupService backupService = new BackupService(logger, businessService, cryptoService);
             ConfigService configService = new ConfigService();
             LanguageService langService = new LanguageService();
+            StateService stateService = new StateService();
 
-            // 2. Création du ViewModel
-            _viewModel = new BackupManagerViewModel(backupService, configService, langService);
+            AppSettings settings = configService.LoadSettings();
+            businessService.Configure(settings.BusinessSoftwareName);
+            cryptoService.Configure(settings.EncryptionExtensions);
 
-            // 3. Liaison avec l'interface (DataBinding)
+            BackupService backupService = new BackupService(logger, businessService, cryptoService);
+            _viewModel = new BackupManagerViewModel(backupService, configService, langService, stateService);
+
             this.DataContext = _viewModel;
         }
 
-        // Exemple d'action sur un bouton "Lancer"
         private void ExecuteAll_Click(object sender, RoutedEventArgs e)
         {
             _viewModel.ExecuteAll();

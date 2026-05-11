@@ -25,10 +25,11 @@ namespace EasySave.Views
 
         public void ShowMessage(string msg) => Console.WriteLine(msg);
 
-        public void ShowJobs(List<BackupJob> jobs)
+        public void ShowJobs(IEnumerable<BackupJob> jobs)
         {
-            if (jobs.Count == 0) { ShowMessage(_viewModel.Translate("no.jobs")); return; }
-            foreach (BackupJob job in jobs)
+            var list = jobs.ToList();
+            if (list.Count == 0) { ShowMessage(_viewModel.Translate("no.jobs")); return; }
+            foreach (BackupJob job in list)
                 Console.WriteLine($"[{job.Id}] {job.Name} | {job.Type} | {job.SourcePath} -> {job.TargetPath}");
         }
 

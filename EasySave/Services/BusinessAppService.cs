@@ -1,18 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 using System.Linq;
 
 namespace EasySave.Services
 {
     public class BusinessAppService
     {
-        
-        public bool IsBusinessAppRunning(string name)
+        private string _name = "";
+
+        public void Configure(string name) => _name = name;
+
+        public bool IsBusinessAppRunning()
         {
-            
-            return Process.GetProcessesByName(name).Any();
+            if (string.IsNullOrEmpty(_name)) return false;
+            return Process.GetProcessesByName(_name).Any();
         }
     }
 }

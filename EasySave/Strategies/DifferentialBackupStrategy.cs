@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using EasyLog;
 using EasySave.Models;
 using EasySave.Services;
@@ -7,7 +7,7 @@ namespace EasySave.Strategies
 {
     public class DifferentialBackupStrategy : IBackupStrategy
     {
-        public override void Execute(BackupJob job, Logger logger, StateService stateService)
+        public override void Execute(BackupJob job, Logger logger, StateService? stateService, BusinessAppService businessAppService, CryptoService cryptoService)
         {
             if (!Directory.Exists(job.SourcePath))
                 throw new DirectoryNotFoundException($"Source not found: {job.SourcePath}");
@@ -21,16 +21,19 @@ namespace EasySave.Strategies
 
             foreach (FileInfo file in files)
             {
+                if (businessAppService.IsBusinessAppRunning())
+                    throw new OperationCanceledException("Business software detected during execution.");
+
                 string relativePath = Path.GetRelativePath(job.SourcePath, file.FullName);
                 string targetFile = Path.Combine(job.TargetPath, relativePath);
                 Directory.CreateDirectory(Path.GetDirectoryName(targetFile)!);
 
-                stateService.OnFileProcessed(BuildState(job, remaining, total, totalSize, file.FullName, targetFile));
-                CopyFile(file.FullName, targetFile, job.Name, logger);
+                stateService?.OnFileProcessed(BuildState(job, remaining, total, totalSize, file.FullName, targetFile));
+                CopyFile(file.FullName, targetFile, job.Name, logger, cryptoService);
                 remaining--;
             }
 
-            stateService.OnJobCompleted(job.Name);
+            stateService?.OnJobCompleted(job.Name);
         }
 
         protected override List<FileInfo> GetFilesToCopy(string source, string target)

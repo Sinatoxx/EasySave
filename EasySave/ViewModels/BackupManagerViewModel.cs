@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using EasySave.Models;
@@ -12,8 +13,8 @@ namespace EasySave.ViewModels
         private readonly BackupService _backupService;
         private readonly ConfigService _configService;
         private readonly LanguageService _langService;
+        private readonly StateService _stateService;
 
-        // Liste illimitée de travaux (ObservableCollection met à jour l'UI automatiquement)
         public ObservableCollection<BackupJob> Jobs { get; set; }
 
         private double _currentProgress;
@@ -23,45 +24,73 @@ namespace EasySave.ViewModels
             set { _currentProgress = value; OnPropertyChanged(); }
         }
 
-        private string _currentStatus;
-        public string CurrentStatus
+        private string? _currentStatus;
+        public string? CurrentStatus
         {
             get => _currentStatus;
             set { _currentStatus = value; OnPropertyChanged(); }
         }
 
-        public BackupManagerViewModel(BackupService backupService, ConfigService configService, LanguageService langService)
+        public BackupManagerViewModel(BackupService backupService, ConfigService configService, LanguageService langService, StateService stateService)
         {
             _backupService = backupService;
             _configService = configService;
             _langService = langService;
+            _stateService = stateService;
 
-            // Chargement des travaux depuis le JSON
             Jobs = new ObservableCollection<BackupJob>(_configService.LoadJobs());
-
-            // On s'abonne aux notifications du moteur de sauvegarde
             _backupService.AddObserver(this);
+            _backupService.AddObserver(_stateService);
+            _backupService.SetJobs(new List<BackupJob>(Jobs));
         }
 
-        public void AddJob(string name, string source, string target, BackupType type)
+        public bool AddJob(string name, string source, string target, BackupType type)
         {
             var newJob = new BackupJob { Id = Jobs.Count + 1, Name = name, SourcePath = source, TargetPath = target, Type = type };
             Jobs.Add(newJob);
             _configService.SaveJobs(new List<BackupJob>(Jobs));
+            _backupService.SetJobs(new List<BackupJob>(Jobs));
+            return true;
         }
 
-        public void ExecuteJob(BackupJob job)
+        public void RemoveJob(int id)
         {
-            // Lancer en arrière-plan pour ne pas freezer l'interface WPF
-            Task.Run(() => _backupService.Execute(job));
+            var job = Jobs.FirstOrDefault(j => j.Id == id);
+            if (job == null) return;
+            Jobs.Remove(job);
+            _configService.SaveJobs(new List<BackupJob>(Jobs));
+            _backupService.SetJobs(new List<BackupJob>(Jobs));
         }
 
-        public void ExecuteAll()
+        public void ExecuteJob(int id)
         {
-            Task.Run(() => _backupService.ExecuteAll());
+            var job = Jobs.FirstOrDefault(j => j.Id == id);
+            if (job != null) Task.Run(() => _backupService.Execute(job));
         }
 
-        // --- Implémentation de IBackupObserver ---
+        public void ExecuteJobs(List<int> ids) => Task.Run(() => _backupService.ExecuteRange(ids));
+
+        public void ExecuteAll() => Task.Run(() => _backupService.ExecuteAll());
+
+        public List<BackupState> GetStates() => _stateService.GetAllStates();
+
+        public string Translate(string key) => _langService.Translate(key);
+
+        public void SetLanguage(string lang) => _langService.SetLanguage(lang);
+
+        public string GetCurrentLogFormat()
+        {
+            AppSettings settings = _configService.LoadSettings();
+            return settings.LogFormat.ToString();
+        }
+
+        public void SetLogFormat(LogFormat format)
+        {
+            AppSettings settings = _configService.LoadSettings();
+            settings.LogFormat = format;
+            _configService.SaveSettings(settings);
+        }
+
         public override void OnFileProcessed(BackupState state)
         {
             CurrentProgress = state.Progress;
@@ -79,7 +108,6 @@ namespace EasySave.ViewModels
             CurrentStatus = $"Error on {jobName}: {error}";
         }
 
-        // --- Logique de mise à jour WPF ---
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
         {

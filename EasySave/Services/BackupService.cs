@@ -1,8 +1,9 @@
-﻿using EasyLog;
+﻿using System.IO;
+using System.Linq;
+using EasyLog;
 using EasySave.Models;
 using EasySave.Observers;
 using EasySave.Strategies;
-using System.Linq;
 
 namespace EasySave.Services
 {
@@ -91,6 +92,12 @@ namespace EasySave.Services
             if (_strategyMap.TryGetValue(type, out IBackupStrategy? strategy))
                 return strategy;
             throw new NotSupportedException($"Backup type {type} is not supported.");
+        }
+
+        private void NotifyJobCompleted(string jobName)
+        {
+            foreach (IBackupObserver observer in _observers)
+                observer.OnJobCompleted(jobName);
         }
 
         private void NotifyJobError(string jobName, string error)
