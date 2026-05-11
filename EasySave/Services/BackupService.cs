@@ -48,11 +48,11 @@ namespace EasySave.Services
             {
                 IBackupStrategy strategy = ResolveStrategy(job.Type);
 
-                // Récupération du StateService parmi les observateurs
-                StateService? stateService = _observers.OfType<StateService>().FirstOrDefault();
-
-                // V2.0 : On passe les services de sécurité à la stratégie pour le contrôle mid-loop
-                strategy.Execute(job, _logger, stateService, _businessAppService, _cryptoService);
+                strategy.Execute(
+                    job, _logger,
+                    state => { foreach (var obs in _observers) obs.OnFileProcessed(state); },
+                    jobName => { foreach (var obs in _observers) obs.OnJobCompleted(jobName); },
+                    _businessAppService, _cryptoService);
             }
             catch (OperationCanceledException)
             {

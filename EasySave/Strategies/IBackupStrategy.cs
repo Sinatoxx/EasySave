@@ -7,7 +7,14 @@ namespace EasySave.Strategies
 {
     public abstract class IBackupStrategy
     {
-        public abstract void Execute(BackupJob job, Logger logger, StateService? stateService, BusinessAppService businessAppService, CryptoService cryptoService);
+        public abstract void Execute(
+            BackupJob job,
+            Logger logger,
+            Action<BackupState>? onFileProcessed,
+            Action<string>? onJobCompleted,
+            BusinessAppService businessAppService,
+            CryptoService cryptoService);
+
         protected abstract List<FileInfo> GetFilesToCopy(string source, string target);
 
         protected void CopyFile(string src, string dst, string jobName, Logger logger, CryptoService cryptoService)
