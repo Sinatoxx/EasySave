@@ -93,19 +93,28 @@ namespace EasySave.ViewModels
 
         public override void OnFileProcessed(BackupState state)
         {
-            CurrentProgress = state.Progress;
-            CurrentStatus = $"Copying: {state.CurrentSourceFile}";
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                CurrentProgress = state.Progress;
+                CurrentStatus = $"Copying: {state.CurrentSourceFile}";
+            });
         }
 
         public override void OnJobCompleted(string jobName)
         {
-            CurrentStatus = $"{jobName} Completed!";
-            CurrentProgress = 100;
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                CurrentStatus = $"{jobName} Completed!";
+                CurrentProgress = 100;
+            });
         }
 
         public override void OnJobError(string jobName, string error)
         {
-            CurrentStatus = $"Error on {jobName}: {error}";
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                CurrentStatus = $"Error on {jobName}: {error}";
+            });
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
