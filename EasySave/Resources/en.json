@@ -21,5 +21,8 @@
   "no.states": "No state available.",
   "language.choose": "Choose language",
   "language.changed": "Language changed.",
-  "invalid.input": "Invalid input."
+  "invalid.input": "Invalid input.",
+  "menu.log.format": "Change log format",
+  "log.format.choose": "Choose log format:",
+  "log.format.changed": "Log format changed to:"
 }
