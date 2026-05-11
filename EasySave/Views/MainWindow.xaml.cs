@@ -30,16 +30,9 @@ namespace EasySaveGUI
         }
 
         // Exemple d'action sur un bouton "Lancer"
-        private void btnExecute_Click(object sender, RoutedEventArgs e)
+        private void ExecuteAll_Click(object sender, RoutedEventArgs e)
         {
             _viewModel.ExecuteAll();
-        }
-
-        // Exemple d'action pour ajouter un travail (ouvrira une petite fenêtre ou lira des TextBox)
-        private void btnAdd_Click(object sender, RoutedEventArgs e)
-        {
-            // Pour le test : on ajoute un job fixe
-            _viewModel.AddJob("New Job", @"C:\Source", @"C:\Dest", EasySave.Models.BackupType.Full);
         }
     }
 }
