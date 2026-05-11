@@ -2,6 +2,7 @@
 using EasySave.Models;
 using EasySave.Observers;
 using EasySave.Strategies;
+using System.Linq;
 
 namespace EasySave.Services
 {
@@ -12,9 +13,16 @@ namespace EasySave.Services
         private readonly Dictionary<BackupType, IBackupStrategy> _strategyMap;
         private List<BackupJob> _jobs = new();
 
-        public BackupService(Logger logger)
+        // Nouveaux services V2.0
+        private readonly BusinessAppService _businessAppService;
+        private readonly CryptoService _cryptoService;
+
+        public BackupService(Logger logger, BusinessAppService businessAppService, CryptoService cryptoService)
         {
             _logger = logger;
+            _businessAppService = businessAppService;
+            _cryptoService = cryptoService;
+
             _strategyMap = new Dictionary<BackupType, IBackupStrategy>
             {
                 { BackupType.Full, new FullBackupStrategy() },
@@ -28,11 +36,26 @@ namespace EasySave.Services
 
         public void Execute(BackupJob job)
         {
+            // V2.0 : Bloquer le lancement si le logiciel métier est déjà ouvert
+            if (_businessAppService.IsBusinessAppRunning())
+            {
+                NotifyJobError(job.Name, "Backup aborted: Business software is currently running.");
+                return;
+            }
+
             try
             {
                 IBackupStrategy strategy = ResolveStrategy(job.Type);
-                StateService stateService = (StateService)_observers.First(o => o is StateService);
-                strategy.Execute(job, _logger, stateService);
+
+                // Récupération du StateService parmi les observateurs
+                StateService? stateService = _observers.OfType<StateService>().FirstOrDefault();
+
+                // V2.0 : On passe les services de sécurité à la stratégie pour le contrôle mid-loop
+                strategy.Execute(job, _logger, stateService, _businessAppService, _cryptoService);
+            }
+            catch (OperationCanceledException)
+            {
+                NotifyJobError(job.Name, "Backup stopped: Business software detected during execution.");
             }
             catch (Exception ex)
             {
@@ -45,14 +68,22 @@ namespace EasySave.Services
             foreach (int id in ids)
             {
                 BackupJob? job = _jobs.FirstOrDefault(j => j.Id == id);
-                if (job != null) Execute(job);
+                if (job != null)
+                {
+                    Execute(job);
+                    // V2.0 : Si le logiciel métier est détecté pendant une série, on arrête la suite
+                    if (_businessAppService.IsBusinessAppRunning()) break;
+                }
             }
         }
 
         public void ExecuteAll()
         {
             foreach (BackupJob job in _jobs)
+            {
                 Execute(job);
+                if (_businessAppService.IsBusinessAppRunning()) break;
+            }
         }
 
 
