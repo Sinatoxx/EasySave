@@ -1,4 +1,4 @@
-﻿using EasyLog;
+using EasyLog;
 using EasySave.Services;
 using EasySave.ViewModels;
 using EasySave.Views;
@@ -23,7 +23,7 @@ static BackupManagerViewModel ComposeDependencies()
     LanguageService langService = new LanguageService();
     BackupService backupService = new BackupService(logger);
     backupService.AddObserver(stateService);
-    return new BackupManagerViewModel(backupService, configService, stateService, langService);
+    return new BackupManagerViewModel(backupService, configService, stateService, langService, logger);
 }
 
 static List<int> ParseArguments(string[] args)

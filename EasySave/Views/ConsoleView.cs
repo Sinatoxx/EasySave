@@ -57,6 +57,7 @@ namespace EasySave.Views
             Console.WriteLine($"5. {_viewModel.Translate("menu.execute.all")}");
             Console.WriteLine($"6. {_viewModel.Translate("menu.states")}");
             Console.WriteLine($"7. {_viewModel.Translate("menu.language")}");
+            Console.WriteLine($"8. {_viewModel.Translate("menu.log.format")} [{_viewModel.GetCurrentLogFormat()}]");
             Console.WriteLine($"0. {_viewModel.Translate("menu.exit")}");
             Console.Write(_viewModel.Translate("menu.choice") + " ");
         }
@@ -109,10 +110,27 @@ namespace EasySave.Views
                     }
                     break;
 
+                case "8":
+                    PromptLogFormat();
+                    break;
+
                 default:
                     ShowError(_viewModel.Translate("invalid.input"));
                     break;
             }
+        }
+
+        private void PromptLogFormat()
+        {
+            Console.WriteLine(_viewModel.Translate("log.format.choose"));
+            Console.WriteLine("1. JSON");
+            Console.WriteLine("2. XML");
+            Console.Write(_viewModel.Translate("menu.choice") + " ");
+            string? choice = Console.ReadLine();
+
+            LogFormat format = choice == "2" ? LogFormat.Xml : LogFormat.Json;
+            _viewModel.SetLogFormat(format);
+            ShowMessage($"{_viewModel.Translate("log.format.changed")} {format}");
         }
 
         private void PromptNewJob()
