@@ -1,4 +1,5 @@
-﻿using EasySave.Factory;
+﻿using EasyLog;
+using EasySave.Factory;
 using EasySave.Models;
 using EasySave.Services;
 
@@ -10,6 +11,8 @@ namespace EasySave.ViewModels
         private readonly ConfigService _configService;
         private readonly StateService _stateService;
         private readonly LanguageService _langService;
+        private readonly Logger _logger;
+        private AppSettings _settings;
 
         public List<BackupJob> Jobs { get; private set; } = new();
         public int MaxJobs => 5;
@@ -18,12 +21,18 @@ namespace EasySave.ViewModels
             BackupService backupService,
             ConfigService configService,
             StateService stateService,
-            LanguageService langService)
+            LanguageService langService,
+            Logger logger)
         {
             _backupService = backupService;
             _configService = configService;
             _stateService = stateService;
             _langService = langService;
+            _logger = logger;
+
+            _settings = _configService.LoadSettings();
+            _langService.SetLanguage(_settings.Language);
+            ApplyLogFormat(_settings.LogFormat);
 
             Jobs = _configService.LoadJobs();
             _backupService.SetJobs(Jobs);
@@ -60,9 +69,31 @@ namespace EasySave.ViewModels
         public void ExecuteJobs(List<int> ids) => _backupService.ExecuteRange(ids);
         public void ExecuteAll() => _backupService.ExecuteAll();
         public List<BackupState> GetStates() => _stateService.GetAllStates();
-        public void SetLanguage(string lang) => _langService.SetLanguage(lang);
+
+        public void SetLanguage(string lang)
+        {
+            _langService.SetLanguage(lang);
+            _settings.Language = lang;
+            _configService.SaveSettings(_settings);
+        }
+
+        public void SetLogFormat(LogFormat format)
+        {
+            _settings.LogFormat = format;
+            ApplyLogFormat(format);
+            _configService.SaveSettings(_settings);
+        }
+
+        public LogFormat GetCurrentLogFormat() => _settings.LogFormat;
+
+        private void ApplyLogFormat(LogFormat format)
+        {
+            ILogExporter exporter = format == LogFormat.Xml
+                ? new XmlLogExporter()
+                : new JsonLogExporter();
+            _logger.SetExporter(exporter);
+        }
+
         public string Translate(string key) => _langService.Translate(key);
-        public string GetLogFormat() => _configService.GetLogFormat();
-        public void SetLogFormat(string format) => _configService.SetLogFormat(format);
     }
 }
