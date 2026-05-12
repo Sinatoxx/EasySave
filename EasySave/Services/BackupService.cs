@@ -1,4 +1,6 @@
-﻿using EasyLog;
+﻿using System.IO;
+using System.Linq;
+using EasyLog;
 using EasySave.Models;
 using EasySave.Observers;
 using EasySave.Strategies;
@@ -47,11 +49,11 @@ namespace EasySave.Services
             {
                 IBackupStrategy strategy = ResolveStrategy(job.Type);
 
-                // Récupération du StateService parmi les observateurs
-                StateService? stateService = _observers.OfType<StateService>().FirstOrDefault();
-
-                // V2.0 : On passe les services de sécurité à la stratégie pour le contrôle mid-loop
-                strategy.Execute(job, _logger, stateService, _businessAppService, _cryptoService);
+                strategy.Execute(
+                                    job, _logger,
+                                    state => { foreach (var obs in _observers) obs.OnFileProcessed(state); },
+                                    jobName => { foreach (var obs in _observers) obs.OnJobCompleted(jobName); },
+                                    _businessAppService, _cryptoService);
             }
             catch (OperationCanceledException)
             {
@@ -95,6 +97,12 @@ namespace EasySave.Services
             if (_strategyMap.TryGetValue(type, out IBackupStrategy? strategy))
                 return strategy;
             throw new NotSupportedException($"Backup type {type} is not supported.");
+        }
+
+        private void NotifyJobCompleted(string jobName)
+        {
+            foreach (IBackupObserver observer in _observers)
+                observer.OnJobCompleted(jobName);
         }
 
         private void NotifyJobError(string jobName, string error)

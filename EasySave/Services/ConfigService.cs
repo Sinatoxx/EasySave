@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using EasySave.Models;
 
 namespace EasySave.Services
@@ -7,11 +8,19 @@ namespace EasySave.Services
     {
         private readonly string _configFilePath;
         private readonly string _settingsFilePath;
+        private readonly JsonSerializerOptions _settingsOptions;
 
         public ConfigService()
         {
             _configFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
             _settingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+
+            _settingsOptions = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Converters = { new JsonStringEnumConverter() }
+            };
+
             EnsureFileExists();
         }
 
@@ -37,12 +46,12 @@ namespace EasySave.Services
             }
 
             string json = File.ReadAllText(_settingsFilePath);
-            return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            return JsonSerializer.Deserialize<AppSettings>(json, _settingsOptions) ?? new AppSettings();
         }
 
         public void SaveSettings(AppSettings settings)
         {
-            string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            string json = JsonSerializer.Serialize(settings, _settingsOptions);
             File.WriteAllText(_settingsFilePath, json);
         }
 

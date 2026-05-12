@@ -1,99 +1,126 @@
-﻿using EasyLog;
-using EasySave.Factory;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using EasySave.Models;
 using EasySave.Services;
+using EasySave.Observers;
 
 namespace EasySave.ViewModels
 {
-    public class BackupManagerViewModel
+    public class BackupManagerViewModel : IBackupObserver, INotifyPropertyChanged
     {
         private readonly BackupService _backupService;
         private readonly ConfigService _configService;
-        private readonly StateService _stateService;
         private readonly LanguageService _langService;
-        private readonly Logger _logger;
-        private AppSettings _settings;
+        private readonly StateService _stateService;
 
-        public List<BackupJob> Jobs { get; private set; } = new();
-        public int MaxJobs => 5;
+        public ObservableCollection<BackupJob> Jobs { get; set; }
 
-        public BackupManagerViewModel(
-            BackupService backupService,
-            ConfigService configService,
-            StateService stateService,
-            LanguageService langService,
-            Logger logger)
+        private double _currentProgress;
+        public double CurrentProgress
+        {
+            get => _currentProgress;
+            set { _currentProgress = value; OnPropertyChanged(); }
+        }
+
+        private string? _currentStatus;
+        public string? CurrentStatus
+        {
+            get => _currentStatus;
+            set { _currentStatus = value; OnPropertyChanged(); }
+        }
+
+        public BackupManagerViewModel(BackupService backupService, ConfigService configService, LanguageService langService, StateService stateService)
         {
             _backupService = backupService;
             _configService = configService;
-            _stateService = stateService;
             _langService = langService;
-            _logger = logger;
+            _stateService = stateService;
 
-            _settings = _configService.LoadSettings();
-            _langService.SetLanguage(_settings.Language);
-            ApplyLogFormat(_settings.LogFormat);
-
-            Jobs = _configService.LoadJobs();
-            _backupService.SetJobs(Jobs);
+            Jobs = new ObservableCollection<BackupJob>(_configService.LoadJobs());
+            _backupService.AddObserver(this);
+            _backupService.AddObserver(_stateService);
+            _backupService.SetJobs(new List<BackupJob>(Jobs));
         }
-
-        public bool CanAddJob() => Jobs.Count < MaxJobs;
 
         public bool AddJob(string name, string source, string target, BackupType type)
         {
-            if (!CanAddJob()) return false;
-            int id = Jobs.Count > 0 ? Jobs.Max(j => j.Id) + 1 : 1;
-            BackupJob job = BackupJobFactory.CreateJob(id, name, source, target, type);
-            Jobs.Add(job);
-            _configService.SaveJobs(Jobs);
-            _backupService.SetJobs(Jobs);
+            var newJob = new BackupJob { Id = Jobs.Count + 1, Name = name, SourcePath = source, TargetPath = target, Type = type };
+            Jobs.Add(newJob);
+            _configService.SaveJobs(new List<BackupJob>(Jobs));
+            _backupService.SetJobs(new List<BackupJob>(Jobs));
             return true;
         }
 
         public void RemoveJob(int id)
         {
-            BackupJob? job = Jobs.FirstOrDefault(j => j.Id == id);
+            var job = Jobs.FirstOrDefault(j => j.Id == id);
             if (job == null) return;
             Jobs.Remove(job);
-            _configService.SaveJobs(Jobs);
-            _backupService.SetJobs(Jobs);
+            _configService.SaveJobs(new List<BackupJob>(Jobs));
+            _backupService.SetJobs(new List<BackupJob>(Jobs));
         }
 
         public void ExecuteJob(int id)
         {
-            BackupJob? job = Jobs.FirstOrDefault(j => j.Id == id);
-            if (job != null) _backupService.Execute(job);
+            var job = Jobs.FirstOrDefault(j => j.Id == id);
+            if (job != null) Task.Run(() => _backupService.Execute(job));
         }
 
-        public void ExecuteJobs(List<int> ids) => _backupService.ExecuteRange(ids);
-        public void ExecuteAll() => _backupService.ExecuteAll();
+        public void ExecuteJobs(List<int> ids) => Task.Run(() => _backupService.ExecuteRange(ids));
+
+        public void ExecuteAll() => Task.Run(() => _backupService.ExecuteAll());
+
         public List<BackupState> GetStates() => _stateService.GetAllStates();
 
-        public void SetLanguage(string lang)
+        public string Translate(string key) => _langService.Translate(key);
+
+        public void SetLanguage(string lang) => _langService.SetLanguage(lang);
+
+        public string GetCurrentLogFormat()
         {
-            _langService.SetLanguage(lang);
-            _settings.Language = lang;
-            _configService.SaveSettings(_settings);
+            AppSettings settings = _configService.LoadSettings();
+            return settings.LogFormat.ToString();
         }
 
         public void SetLogFormat(LogFormat format)
         {
-            _settings.LogFormat = format;
-            ApplyLogFormat(format);
-            _configService.SaveSettings(_settings);
+            AppSettings settings = _configService.LoadSettings();
+            settings.LogFormat = format;
+            _configService.SaveSettings(settings);
         }
 
-        public LogFormat GetCurrentLogFormat() => _settings.LogFormat;
-
-        private void ApplyLogFormat(LogFormat format)
+        public override void OnFileProcessed(BackupState state)
         {
-            ILogExporter exporter = format == LogFormat.Xml
-                ? new XmlLogExporter()
-                : new JsonLogExporter();
-            _logger.SetExporter(exporter);
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                CurrentProgress = state.Progress;
+                CurrentStatus = $"Copying: {state.CurrentSourceFile}";
+            });
         }
 
-        public string Translate(string key) => _langService.Translate(key);
+        public override void OnJobCompleted(string jobName)
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                CurrentStatus = $"{jobName} Completed!";
+                CurrentProgress = 100;
+            });
+        }
+
+        public override void OnJobError(string jobName, string error)
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                CurrentStatus = $"Error on {jobName}: {error}";
+            });
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
     }
 }
