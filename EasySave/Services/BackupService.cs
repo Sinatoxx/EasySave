@@ -110,6 +110,5 @@ namespace EasySave.Services
             foreach (IBackupObserver observer in _observers)
                 observer.OnJobError(jobName, error);
         }
-#modification
     }
 }
