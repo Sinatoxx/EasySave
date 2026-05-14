@@ -68,9 +68,9 @@ namespace EasySave.ViewModels
             if (job != null) Task.Run(() => _backupService.Execute(job));
         }
 
-        public void ExecuteJobs(List<int> ids) => Task.Run(() => _backupService.ExecuteRange(ids));
+        public void ExecuteJobs(List<int> ids) => _ = _backupService.ExecuteRange(ids);
 
-        public void ExecuteAll() => Task.Run(() => _backupService.ExecuteAll());
+        public void ExecuteAll() => _ = _backupService.ExecuteAll();
 
         public List<BackupState> GetStates() => _stateService.GetAllStates();
 
@@ -95,8 +95,12 @@ namespace EasySave.ViewModels
         {
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                CurrentProgress = state.Progress;
-                CurrentStatus = $"Copying: {state.CurrentSourceFile}";
+                var job = Jobs.FirstOrDefault(j => j.Name == state.JobName);
+                if (job != null)
+                {
+                    job.Progress = state.Progress;
+                    job.StatusText = $"Copying: {System.IO.Path.GetFileName(state.CurrentSourceFile)}";
+                }
             });
         }
 
@@ -104,8 +108,12 @@ namespace EasySave.ViewModels
         {
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                CurrentStatus = $"{jobName} Completed!";
-                CurrentProgress = 100;
+                var job = Jobs.FirstOrDefault(j => j.Name == jobName);
+                if (job != null)
+                {
+                    job.Progress = 100;
+                    job.StatusText = "Completed";
+                }
             });
         }
 
@@ -113,7 +121,9 @@ namespace EasySave.ViewModels
         {
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                CurrentStatus = $"Error on {jobName}: {error}";
+                var job = Jobs.FirstOrDefault(j => j.Name == jobName);
+                if (job != null)
+                    job.StatusText = $"Error: {error}";
             });
         }
 

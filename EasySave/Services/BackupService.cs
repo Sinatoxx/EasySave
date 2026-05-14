@@ -64,27 +64,19 @@ namespace EasySave.Services
             }
         }
 
-        public void ExecuteRange(List<int> ids)
+        public async Task ExecuteRange(List<int> ids)
         {
-            foreach (int id in ids)
-            {
-                BackupJob? job = _jobs.FirstOrDefault(j => j.Id == id);
-                if (job != null)
-                {
-                    Execute(job);
-                    // V2.0 : Si le logiciel métier est détecté pendant une série, on arrête la suite
-                    if (_businessAppService.IsBusinessAppRunning()) break;
-                }
-            }
+            List<BackupJob> jobs = ids
+                .Select(id => _jobs.FirstOrDefault(j => j.Id == id))
+                .Where(j => j != null)
+                .ToList()!;
+
+            await Task.WhenAll(jobs.Select(job => Task.Run(() => Execute(job))));
         }
 
-        public void ExecuteAll()
+        public async Task ExecuteAll()
         {
-            foreach (BackupJob job in _jobs)
-            {
-                Execute(job);
-                if (_businessAppService.IsBusinessAppRunning()) break;
-            }
+            await Task.WhenAll(_jobs.Select(job => Task.Run(() => Execute(job))));
         }
 
         private IBackupStrategy ResolveStrategy(BackupType type)
