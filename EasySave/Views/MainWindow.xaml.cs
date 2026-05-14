@@ -65,6 +65,24 @@ namespace EasySaveGUI
                 _viewModel.RemoveJob(id);
         }
 
+        private void PauseJob_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is int id)
+                _viewModel.PauseJob(id);
+        }
+
+        private void ResumeJob_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is int id)
+                _viewModel.ResumeJob(id);
+        }
+
+        private void StopJob_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is int id)
+                _viewModel.StopJob(id);
+        }
+
         private void ExecuteAll_Click(object sender, RoutedEventArgs e)
         {
             _viewModel.ExecuteAll();

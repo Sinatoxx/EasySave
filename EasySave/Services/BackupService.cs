@@ -12,9 +12,9 @@ namespace EasySave.Services
         private readonly Logger _logger;
         private readonly List<IBackupObserver> _observers = new();
         private readonly Dictionary<BackupType, IBackupStrategy> _strategyMap;
+        private readonly Dictionary<int, JobController> _controllers = new();
         private List<BackupJob> _jobs = new();
 
-        // Nouveaux services V2.0
         private readonly BusinessAppService _businessAppService;
         private readonly CryptoService _cryptoService;
 
@@ -35,14 +35,22 @@ namespace EasySave.Services
         public void RemoveObserver(IBackupObserver observer) => _observers.Remove(observer);
         public void SetJobs(List<BackupJob> jobs) => _jobs = jobs;
 
+        public void PauseJob(int id) { if (_controllers.TryGetValue(id, out var ctrl)) ctrl.Pause(); }
+        public void ResumeJob(int id) { if (_controllers.TryGetValue(id, out var ctrl)) ctrl.Resume(); }
+        public void StopJob(int id) { if (_controllers.TryGetValue(id, out var ctrl)) ctrl.Stop(); }
+
         public void Execute(BackupJob job)
         {
-            // V2.0 : Bloquer le lancement si le logiciel métier est déjà ouvert
             if (_businessAppService.IsBusinessAppRunning())
             {
                 NotifyJobError(job.Name, "Backup aborted: Business software is currently running.");
                 return;
             }
+
+            var controller = new JobController();
+            _controllers[job.Id] = controller;
+
+            NotifyJobStarted(job.Name);
 
             try
             {
@@ -52,15 +60,22 @@ namespace EasySave.Services
                     job, _logger,
                     state => { foreach (var obs in _observers) obs.OnFileProcessed(state); },
                     jobName => { foreach (var obs in _observers) obs.OnJobCompleted(jobName); },
-                    _businessAppService, _cryptoService);
+                    _businessAppService, _cryptoService, controller);
             }
             catch (OperationCanceledException)
             {
-                NotifyJobError(job.Name, "Backup stopped: Business software detected during execution.");
+                if (controller.CancelToken.IsCancellationRequested)
+                    NotifyJobStopped(job.Name);
+                else
+                    NotifyJobError(job.Name, "Backup paused: Business software detected.");
             }
             catch (Exception ex)
             {
                 NotifyJobError(job.Name, ex.Message);
+            }
+            finally
+            {
+                _controllers.Remove(job.Id);
             }
         }
 
@@ -86,16 +101,9 @@ namespace EasySave.Services
             throw new NotSupportedException($"Backup type {type} is not supported.");
         }
 
-        private void NotifyJobCompleted(string jobName)
-        {
-            foreach (IBackupObserver observer in _observers)
-                observer.OnJobCompleted(jobName);
-        }
-
-        private void NotifyJobError(string jobName, string error)
-        {
-            foreach (IBackupObserver observer in _observers)
-                observer.OnJobError(jobName, error);
-        }
+        private void NotifyJobStarted(string jobName) { foreach (var obs in _observers) obs.OnJobStarted(jobName); }
+        private void NotifyJobCompleted(string jobName) { foreach (var obs in _observers) obs.OnJobCompleted(jobName); }
+        private void NotifyJobStopped(string jobName) { foreach (var obs in _observers) obs.OnJobStopped(jobName); }
+        private void NotifyJobError(string jobName, string error) { foreach (var obs in _observers) obs.OnJobError(jobName, error); }
     }
 }

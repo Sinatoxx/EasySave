@@ -59,12 +59,15 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="Actions" Width="160">
+                <DataGridTemplateColumn Header="Actions" Width="230">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
-                                <Button Content="Exécuter" Click="ExecuteJob_Click" Tag="{Binding Id}" Margin="2" Padding="5,2"/>
-                                <Button Content="Supprimer" Click="DeleteJob_Click" Tag="{Binding Id}" Margin="2" Padding="5,2"/>
+                                <Button Content="Exécuter" Click="ExecuteJob_Click" Tag="{Binding Id}" Margin="2" Padding="5,2" IsEnabled="{Binding CanStart}"/>
+                                <Button Content="Pause" Click="PauseJob_Click" Tag="{Binding Id}" Margin="2" Padding="5,2" IsEnabled="{Binding CanPause}"/>
+                                <Button Content="Reprendre" Click="ResumeJob_Click" Tag="{Binding Id}" Margin="2" Padding="5,2" IsEnabled="{Binding CanResume}"/>
+                                <Button Content="Stop" Click="StopJob_Click" Tag="{Binding Id}" Margin="2" Padding="5,2" IsEnabled="{Binding CanStop}"/>
+                                <Button Content="Supprimer" Click="DeleteJob_Click" Tag="{Binding Id}" Margin="2" Padding="5,2" IsEnabled="{Binding CanStart}"/>
                             </StackPanel>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>

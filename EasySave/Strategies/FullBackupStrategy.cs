@@ -13,7 +13,8 @@ namespace EasySave.Strategies
             Action<BackupState>? onFileProcessed,
             Action<string>? onJobCompleted,
             BusinessAppService businessAppService,
-            CryptoService cryptoService)
+            CryptoService cryptoService,
+            JobController controller)
         {
             if (!Directory.Exists(job.SourcePath))
                 throw new DirectoryNotFoundException($"Source not found: {job.SourcePath}");
@@ -27,6 +28,8 @@ namespace EasySave.Strategies
 
             foreach (FileInfo file in files)
             {
+                controller.CheckPoint(); // bloque si en pause, lève exception si stoppé
+
                 if (businessAppService.IsBusinessAppRunning())
                     throw new OperationCanceledException("Business software detected during execution.");
 

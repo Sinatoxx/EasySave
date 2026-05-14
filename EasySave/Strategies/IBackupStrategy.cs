@@ -13,7 +13,8 @@ namespace EasySave.Strategies
             Action<BackupState>? onFileProcessed,
             Action<string>? onJobCompleted,
             BusinessAppService businessAppService,
-            CryptoService cryptoService);
+            CryptoService cryptoService,
+            JobController controller);
 
         protected abstract List<FileInfo> GetFilesToCopy(string source, string target);
 

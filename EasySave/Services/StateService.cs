@@ -15,6 +15,20 @@ namespace EasySave.Services
             _stateFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "state.json");
         }
 
+        public override void OnJobStarted(string jobName) { }
+
+        public override void OnJobStopped(string jobName)
+        {
+            lock (_lock)
+            {
+                if (_states.ContainsKey(jobName))
+                {
+                    _states[jobName].Status = BackupStatus.Inactive;
+                    PersistToFile();
+                }
+            }
+        }
+
         public override void OnFileProcessed(BackupState state)
         {
             lock (_lock)

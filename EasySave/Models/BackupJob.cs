@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 namespace EasySave.Models
 {
@@ -24,6 +25,27 @@ namespace EasySave.Models
             get => _statusText;
             set { _statusText = value; OnPropertyChanged(); }
         }
+
+        private JobPhase _phase = JobPhase.Idle;
+        [JsonIgnore]
+        public JobPhase Phase
+        {
+            get => _phase;
+            set
+            {
+                _phase = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CanStart));
+                OnPropertyChanged(nameof(CanPause));
+                OnPropertyChanged(nameof(CanResume));
+                OnPropertyChanged(nameof(CanStop));
+            }
+        }
+
+        [JsonIgnore] public bool CanStart => Phase == JobPhase.Idle || Phase == JobPhase.Completed || Phase == JobPhase.Stopped || Phase == JobPhase.Error;
+        [JsonIgnore] public bool CanPause => Phase == JobPhase.Running;
+        [JsonIgnore] public bool CanResume => Phase == JobPhase.Paused;
+        [JsonIgnore] public bool CanStop => Phase == JobPhase.Running || Phase == JobPhase.Paused;
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
