@@ -22,7 +22,7 @@
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Nom :" VerticalAlignment="Center" Margin="0,5,10,5"/>
-                <TextBox Grid.Row="0" Grid.Column="1" x:Name="txtName" Margin="0,5,10,5"/>
+                <TextBox Grid.Row="0" Grid.Column="1" x:Name="txtName" Margin="0,5,10,5" TextChanged="txtName_TextChanged"/>
                 <TextBlock Grid.Row="0" Grid.Column="2" Text="Type :" VerticalAlignment="Center" Margin="0,5,10,5"/>
                 <ComboBox Grid.Row="0" Grid.Column="3" x:Name="cmbType" Margin="0,5,0,5">
                     <ComboBoxItem Content="Complète" IsSelected="True"/>

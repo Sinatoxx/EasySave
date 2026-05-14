@@ -69,5 +69,10 @@ namespace EasySaveGUI
         {
             _viewModel.ExecuteAll();
         }
+
+        private void txtName_TextChanged(object sender, TextChangedEventArgs e)
+        {
+
+        }
     }
 }
