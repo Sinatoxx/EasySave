@@ -99,6 +99,14 @@ namespace EasySaveGUI
             _viewModel.ExecuteAll();
         }
 
+        private void OpenSettings_Click(object sender, RoutedEventArgs e)
+        {
+            ConfigService configService = new ConfigService();
+            SettingsWindow settings = new SettingsWindow(configService);
+            settings.Owner = this;
+            settings.ShowDialog();
+        }
+
         private void txtName_TextChanged(object sender, TextChangedEventArgs e)
         {
 

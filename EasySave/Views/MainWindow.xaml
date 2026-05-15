@@ -5,6 +5,8 @@
     <StackPanel Margin="15">
 
         <TextBlock Text="EasySave — Travaux de sauvegarde" FontSize="20" FontWeight="Bold" Margin="0,0,0,10"/>
+        <Button Content="⚙ Paramètres" Click="OpenSettings_Click" 
+        HorizontalAlignment="Right" Padding="10,5" Margin="0,0,0,10"/>
 
         <!-- Formulaire création -->
         <GroupBox Header="Nouveau travail" Margin="0,0,0,10">
