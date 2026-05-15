@@ -26,6 +26,7 @@ namespace EasySaveGUI
             businessService.Configure(settings.BusinessSoftwareName);
             cryptoService.Configure(settings.EncryptionExtensions);
             cryptoService.ConfigurePriorities(settings.PriorityExtensions);
+            BandwidthLimiter.Configure(settings.MaxParallelFileSizeKB);
 
             BackupService backupService = new BackupService(logger, businessService, cryptoService);
             _viewModel = new BackupManagerViewModel(backupService, configService, langService, stateService);

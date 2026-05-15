@@ -48,7 +48,7 @@ namespace EasySave.Strategies
                 Directory.CreateDirectory(Path.GetDirectoryName(targetFile)!);
 
                 onFileProcessed?.Invoke(BuildState(job, remaining, total, totalSize, file.FullName, targetFile));
-                CopyFile(file.FullName, targetFile, job.Name, logger, cryptoService);
+                CopyFile(file.FullName, targetFile, job.Name, logger, cryptoService, controller.CancelToken);
 
                 if (isPriority) PriorityCoordinator.OnePriorityDone();
 

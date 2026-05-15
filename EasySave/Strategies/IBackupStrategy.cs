@@ -25,11 +25,14 @@ namespace EasySave.Strategies
                 .ToList();
         }
 
-        protected void CopyFile(string src, string dst, string jobName, Logger logger, CryptoService cryptoService)
+        protected void CopyFile(string src, string dst, string jobName, Logger logger, CryptoService cryptoService, CancellationToken cancelToken)
         {
             long fileSize = new FileInfo(src).Length;
             long transferTime;
             long cryptoTimeMs = 0;
+
+            bool isLarge = BandwidthLimiter.IsLargeFile(fileSize);
+            if (isLarge) BandwidthLimiter.AcquireSlotForLargeFile(cancelToken);
 
             try
             {
@@ -43,6 +46,10 @@ namespace EasySave.Strategies
             catch
             {
                 transferTime = -1;
+            }
+            finally
+            {
+                if (isLarge) BandwidthLimiter.ReleaseSlotForLargeFile();
             }
 
             logger.WriteEntry(new LogEntry
