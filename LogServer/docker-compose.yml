@@ -1,0 +1,10 @@
+﻿version: '3.8'
+services:
+  logserver:
+    build: .
+    container_name: easysave-logserver
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped

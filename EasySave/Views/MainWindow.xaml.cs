@@ -27,6 +27,13 @@ namespace EasySaveGUI
             cryptoService.Configure(settings.EncryptionExtensions);
             cryptoService.ConfigurePriorities(settings.PriorityExtensions);
             BandwidthLimiter.Configure(settings.MaxParallelFileSizeKB);
+            Logger.StorageMode storageMode = settings.LogStorageMode switch
+            {
+                LogStorageMode.Docker => Logger.StorageMode.Docker,
+                LogStorageMode.Both => Logger.StorageMode.Both,
+                _ => Logger.StorageMode.Local
+            };
+            logger.ConfigureStorage(storageMode, settings.DockerServerUrl, settings.UserIdentifier);
 
             BackupService backupService = new BackupService(logger, businessService, cryptoService);
             _viewModel = new BackupManagerViewModel(backupService, configService, langService, stateService);
