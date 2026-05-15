@@ -26,9 +26,22 @@ namespace EasySave.Strategies
             long totalSize = files.Sum(f => f.Length);
             int remaining = total;
 
+            // Compter les fichiers prioritaires de ce job et les enregistrer
+            int priorityCount = files.Count(f => cryptoService.IsPriority(f.FullName));
+            PriorityCoordinator.RegisterPriorityFiles(priorityCount);
+
+            // Trier les prioritaires en premier
+            files = SortByPriority(files, cryptoService);
+
             foreach (FileInfo file in files)
             {
                 controller.CheckPoint();
+
+                bool isPriority = cryptoService.IsPriority(file.FullName);
+
+                // Si non prioritaire, attendre qu'il n'y ait plus de prioritaires en attente
+                if (!isPriority)
+                    PriorityCoordinator.WaitUntilNoPriorityPending(controller.CancelToken);
 
                 string relativePath = Path.GetRelativePath(job.SourcePath, file.FullName);
                 string targetFile = Path.Combine(job.TargetPath, relativePath);
@@ -36,17 +49,8 @@ namespace EasySave.Strategies
 
                 onFileProcessed?.Invoke(BuildState(job, remaining, total, totalSize, file.FullName, targetFile));
                 CopyFile(file.FullName, targetFile, job.Name, logger, cryptoService);
+
+                if (isPriority) PriorityCoordinator.OnePriorityDone();
+
                 remaining--;
             }
-
-            onJobCompleted?.Invoke(job.Name);
-        }
-
-        protected override List<FileInfo> GetFilesToCopy(string source, string target)
-        {
-            return new DirectoryInfo(source)
-                .GetFiles("*", SearchOption.AllDirectories)
-                .ToList();
-        }
-    }
-}

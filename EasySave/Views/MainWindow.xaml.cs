@@ -25,6 +25,7 @@ namespace EasySaveGUI
             AppSettings settings = configService.LoadSettings();
             businessService.Configure(settings.BusinessSoftwareName);
             cryptoService.Configure(settings.EncryptionExtensions);
+            cryptoService.ConfigurePriorities(settings.PriorityExtensions);
 
             BackupService backupService = new BackupService(logger, businessService, cryptoService);
             _viewModel = new BackupManagerViewModel(backupService, configService, langService, stateService);

@@ -18,6 +18,13 @@ namespace EasySave.Strategies
 
         protected abstract List<FileInfo> GetFilesToCopy(string source, string target);
 
+        protected List<FileInfo> SortByPriority(List<FileInfo> files, CryptoService cryptoService)
+        {
+            return files
+                .OrderByDescending(f => cryptoService.IsPriority(f.FullName))
+                .ToList();
+        }
+
         protected void CopyFile(string src, string dst, string jobName, Logger logger, CryptoService cryptoService)
         {
             long fileSize = new FileInfo(src).Length;

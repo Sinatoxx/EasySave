@@ -19,6 +19,14 @@ namespace EasySave.Services
             return _extensions.Any(ext => filePath.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
         }
 
+        private List<string> _priorityExtensions = new();
+        public void ConfigurePriorities(List<string> extensions) => _priorityExtensions = extensions;
+
+        public bool IsPriority(string filePath)
+        {
+            return _priorityExtensions.Any(ext => filePath.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
+        }
+
         public long Encrypt(string src, string dst)
         {
             // 1. On cherche l'exécutable CryptoSoft dans le dossier du logiciel
