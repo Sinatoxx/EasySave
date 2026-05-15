@@ -54,3 +54,17 @@ namespace EasySave.Strategies
 
                 remaining--;
             }
+        }
+                protected override List<FileInfo> GetFilesToCopy(string sourcePath, string targetPath)
+        {
+            DirectoryInfo sourceDir = new DirectoryInfo(sourcePath);
+            // On ne garde que les fichiers qui n'existent pas ou qui ont été modifiés
+            return sourceDir.GetFiles("*", SearchOption.AllDirectories)
+                            .Where(f => {
+                                string rel = Path.GetRelativePath(sourcePath, f.FullName);
+                                string target = Path.Combine(targetPath, rel);
+                                return !File.Exists(target) || f.LastWriteTime > File.GetLastWriteTime(target);
+                            }).ToList();
+        }
+    }
+}

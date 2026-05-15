@@ -54,3 +54,13 @@ namespace EasySave.Strategies
 
                 remaining--;
             }
+        }
+                protected override List<FileInfo> GetFilesToCopy(string sourcePath, string targetPath)
+        {
+            DirectoryInfo sourceDir = new DirectoryInfo(sourcePath);
+            // Sauvegarde complète : on renvoie absolument tout
+            return sourceDir.GetFiles("*", SearchOption.AllDirectories).ToList();
+        
+        }
+    }
+}
