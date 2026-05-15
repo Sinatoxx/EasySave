@@ -38,14 +38,21 @@ namespace EasySave.Services
         public void PauseJob(int id) { if (_controllers.TryGetValue(id, out var ctrl)) ctrl.Pause(); }
         public void ResumeJob(int id) { if (_controllers.TryGetValue(id, out var ctrl)) ctrl.Resume(); }
         public void StopJob(int id) { if (_controllers.TryGetValue(id, out var ctrl)) ctrl.Stop(); }
+        public void PauseAll()
+        {
+            foreach (var ctrl in _controllers.Values) ctrl.Pause();
+        }
+
+        public void ResumeAll()
+        {
+            foreach (var ctrl in _controllers.Values) ctrl.Resume();
+        }
+
+        public bool HasActiveJobs() => _controllers.Count > 0;
+
 
         public void Execute(BackupJob job)
         {
-            if (_businessAppService.IsBusinessAppRunning())
-            {
-                NotifyJobError(job.Name, "Backup aborted: Business software is currently running.");
-                return;
-            }
 
             var controller = new JobController();
             _controllers[job.Id] = controller;

@@ -28,10 +28,7 @@ namespace EasySave.Strategies
 
             foreach (FileInfo file in files)
             {
-                controller.CheckPoint(); // bloque si en pause, lève exception si stoppé
-
-                if (businessAppService.IsBusinessAppRunning())
-                    throw new OperationCanceledException("Business software detected during execution.");
+                controller.CheckPoint();
 
                 string relativePath = Path.GetRelativePath(job.SourcePath, file.FullName);
                 string targetFile = Path.Combine(job.TargetPath, relativePath);

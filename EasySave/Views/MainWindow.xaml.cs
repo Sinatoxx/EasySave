@@ -10,7 +10,7 @@ namespace EasySaveGUI
     public partial class MainWindow : Window
     {
         private readonly BackupManagerViewModel _viewModel;
-
+        private BusinessAppWatcher? _businessWatcher;
         public MainWindow()
         {
             InitializeComponent();
@@ -30,6 +30,15 @@ namespace EasySaveGUI
             _viewModel = new BackupManagerViewModel(backupService, configService, langService, stateService);
 
             this.DataContext = _viewModel;
+
+            _businessWatcher = new BusinessAppWatcher(businessService, isRunning =>
+            {
+                if (isRunning) backupService.PauseAll();
+                else backupService.ResumeAll();
+            });
+            _businessWatcher.Start();
+
+            this.Closing += (s, e) => _businessWatcher.Stop();
         }
 
         private void AddJob_Click(object sender, RoutedEventArgs e)
