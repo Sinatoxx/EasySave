@@ -39,7 +39,6 @@ namespace EasySave.Strategies
 
                 bool isPriority = cryptoService.IsPriority(file.FullName);
 
-                // Si non prioritaire, attendre qu'il n'y ait plus de prioritaires en attente
                 if (!isPriority)
                     PriorityCoordinator.WaitUntilNoPriorityPending(controller.CancelToken);
 
@@ -47,20 +46,23 @@ namespace EasySave.Strategies
                 string targetFile = Path.Combine(job.TargetPath, relativePath);
                 Directory.CreateDirectory(Path.GetDirectoryName(targetFile)!);
 
-                onFileProcessed?.Invoke(BuildState(job, remaining, total, totalSize, file.FullName, targetFile));
                 CopyFile(file.FullName, targetFile, job.Name, logger, cryptoService, controller.CancelToken);
 
                 if (isPriority) PriorityCoordinator.OnePriorityDone();
 
                 remaining--;
+
+                // Notification APRÈS la copie, avec la progression réelle
+                onFileProcessed?.Invoke(BuildState(job, remaining, total, totalSize, file.FullName, targetFile));
             }
+
+            onJobCompleted?.Invoke(job.Name);
         }
-                protected override List<FileInfo> GetFilesToCopy(string sourcePath, string targetPath)
+
+        protected override List<FileInfo> GetFilesToCopy(string sourcePath, string targetPath)
         {
             DirectoryInfo sourceDir = new DirectoryInfo(sourcePath);
-            // Sauvegarde complète : on renvoie absolument tout
             return sourceDir.GetFiles("*", SearchOption.AllDirectories).ToList();
-        
         }
     }
 }
