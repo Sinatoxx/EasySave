@@ -39,6 +39,8 @@ namespace EasySave.ViewModels
             _stateService = stateService;
 
             Jobs = new ObservableCollection<BackupJob>(_configService.LoadJobs());
+            int index = 1;
+            foreach (var job in Jobs) job.Id = index++;
             _backupService.AddObserver(this);
             _backupService.AddObserver(_stateService);
             _backupService.SetJobs(new List<BackupJob>(Jobs));
@@ -46,7 +48,8 @@ namespace EasySave.ViewModels
 
         public bool AddJob(string name, string source, string target, BackupType type)
         {
-            var newJob = new BackupJob { Id = Jobs.Count + 1, Name = name, SourcePath = source, TargetPath = target, Type = type };
+            int newId = Jobs.Count > 0 ? Jobs.Max(j => j.Id) + 1 : 1;
+            var newJob = new BackupJob { Id = newId, Name = name, SourcePath = source, TargetPath = target, Type = type };
             Jobs.Add(newJob);
             _configService.SaveJobs(new List<BackupJob>(Jobs));
             _backupService.SetJobs(new List<BackupJob>(Jobs));
