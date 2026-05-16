@@ -34,6 +34,10 @@ namespace EasySaveGUI
                 _ => Logger.StorageMode.Local
             };
             logger.ConfigureStorage(storageMode, settings.DockerServerUrl, settings.UserIdentifier);
+            if (settings.LogFormat == LogFormat.Xml)
+                logger.SetExporter(new XmlLogExporter());
+            else
+                logger.SetExporter(new JsonLogExporter());
 
             BackupService backupService = new BackupService(logger, businessService, cryptoService);
             _viewModel = new BackupManagerViewModel(backupService, configService, langService, stateService);
