@@ -7,6 +7,7 @@ namespace EasySave.Services
     public class StateService : IBackupObserver
     {
         private readonly string _stateFilePath;
+        private readonly object _lock = new();
         private Dictionary<string, BackupState> _states = new();
 
         public StateService()
@@ -14,35 +15,59 @@ namespace EasySave.Services
             _stateFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "state.json");
         }
 
+        public override void OnJobStarted(string jobName) { }
+
+        public override void OnJobStopped(string jobName)
+        {
+            lock (_lock)
+            {
+                if (_states.ContainsKey(jobName))
+                {
+                    _states[jobName].Status = BackupStatus.Inactive;
+                    PersistToFile();
+                }
+            }
+        }
+
         public override void OnFileProcessed(BackupState state)
         {
-            _states[state.JobName] = state;
-            PersistToFile();
+            lock (_lock)
+            {
+                _states[state.JobName] = state;
+                PersistToFile();
+            }
         }
 
         public override void OnJobCompleted(string jobName)
         {
-            if (_states.ContainsKey(jobName))
+            lock (_lock)
             {
-                _states[jobName].Status = BackupStatus.Inactive;
-                _states[jobName].Progress = 100;
-                _states[jobName].RemainingFiles = 0;
-                PersistToFile();
+                if (_states.ContainsKey(jobName))
+                {
+                    _states[jobName].Status = BackupStatus.Inactive;
+                    _states[jobName].Progress = 100;
+                    _states[jobName].RemainingFiles = 0;
+                    PersistToFile();
+                }
             }
         }
 
         public override void OnJobError(string jobName, string error)
         {
-            if (_states.ContainsKey(jobName))
+            lock (_lock)
             {
-                _states[jobName].Status = BackupStatus.Error;
-                PersistToFile();
+                if (_states.ContainsKey(jobName))
+                {
+                    _states[jobName].Status = BackupStatus.Error;
+                    PersistToFile();
+                }
             }
         }
 
         public List<BackupState> GetAllStates()
         {
-            return _states.Values.ToList();
+            lock (_lock)
+                return _states.Values.ToList();
         }
 
         private void PersistToFile()

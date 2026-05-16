@@ -4,7 +4,6 @@ using EasyLog;
 using EasySave.Models;
 using EasySave.Observers;
 using EasySave.Strategies;
-using System.Linq;
 
 namespace EasySave.Services
 {
@@ -13,9 +12,9 @@ namespace EasySave.Services
         private readonly Logger _logger;
         private readonly List<IBackupObserver> _observers = new();
         private readonly Dictionary<BackupType, IBackupStrategy> _strategyMap;
+        private readonly Dictionary<int, JobController> _controllers = new();
         private List<BackupJob> _jobs = new();
 
-        // Nouveaux services V2.0
         private readonly BusinessAppService _businessAppService;
         private readonly CryptoService _cryptoService;
 
@@ -36,61 +35,70 @@ namespace EasySave.Services
         public void RemoveObserver(IBackupObserver observer) => _observers.Remove(observer);
         public void SetJobs(List<BackupJob> jobs) => _jobs = jobs;
 
+        public void PauseJob(int id) { if (_controllers.TryGetValue(id, out var ctrl)) ctrl.Pause(); }
+        public void ResumeJob(int id) { if (_controllers.TryGetValue(id, out var ctrl)) ctrl.Resume(); }
+        public void StopJob(int id) { if (_controllers.TryGetValue(id, out var ctrl)) ctrl.Stop(); }
+
+        public void PauseAll()
+        {
+            foreach (var ctrl in _controllers.Values) ctrl.Pause();
+        }
+
+        public void ResumeAll()
+        {
+            foreach (var ctrl in _controllers.Values) ctrl.Resume();
+        }
+
+        public bool HasActiveJobs() => _controllers.Count > 0;
+
         public void Execute(BackupJob job)
         {
-            // V2.0 : Bloquer le lancement si le logiciel métier est déjà ouvert
-            if (_businessAppService.IsBusinessAppRunning())
-            {
-                NotifyJobError(job.Name, "Backup aborted: Business software is currently running.");
-                return;
-            }
+            var controller = new JobController();
+            _controllers[job.Id] = controller;
+
+            NotifyJobStarted(job.Name);
 
             try
             {
                 IBackupStrategy strategy = ResolveStrategy(job.Type);
 
                 strategy.Execute(
-                                    job, _logger,
-                                    state => { foreach (var obs in _observers) obs.OnFileProcessed(state); },
-                                    jobName => { foreach (var obs in _observers) obs.OnJobCompleted(jobName); },
-                                    _businessAppService, _cryptoService);
+                    job, _logger,
+                    state => { foreach (var obs in _observers) obs.OnFileProcessed(state); },
+                    jobName => { foreach (var obs in _observers) obs.OnJobCompleted(jobName); },
+                    _businessAppService, _cryptoService, controller);
             }
             catch (OperationCanceledException)
             {
-                NotifyJobError(job.Name, "Backup stopped: Business software detected during execution.");
+                if (controller.CancelToken.IsCancellationRequested)
+                    NotifyJobStopped(job.Name);
+                else
+                    NotifyJobError(job.Name, "Backup paused: Business software detected.");
             }
             catch (Exception ex)
             {
                 NotifyJobError(job.Name, ex.Message);
             }
-        }
-
-        public void ExecuteRange(List<int> ids)
-        {
-            foreach (int id in ids)
+            finally
             {
-                BackupJob? job = _jobs.FirstOrDefault(j => j.Id == id);
-                if (job != null)
-                {
-                    Execute(job);
-                    // V2.0 : Si le logiciel métier est détecté pendant une série, on arrête la suite
-                    if (_businessAppService.IsBusinessAppRunning()) break;
-                }
+                _controllers.Remove(job.Id);
             }
         }
 
-        public void ExecuteAll()
+        public async Task ExecuteRange(List<int> ids)
         {
-            foreach (BackupJob job in _jobs)
-            {
-                Execute(job);
-                if (_businessAppService.IsBusinessAppRunning()) break;
-            }
+            List<BackupJob> jobs = ids
+                .Select(id => _jobs.FirstOrDefault(j => j.Id == id))
+                .Where(j => j != null)
+                .ToList()!;
+
+            await Task.WhenAll(jobs.Select(job => Task.Run(() => Execute(job))));
         }
 
-
-
-
+        public async Task ExecuteAll()
+        {
+            await Task.WhenAll(_jobs.Select(job => Task.Run(() => Execute(job))));
+        }
 
         private IBackupStrategy ResolveStrategy(BackupType type)
         {
@@ -99,17 +107,9 @@ namespace EasySave.Services
             throw new NotSupportedException($"Backup type {type} is not supported.");
         }
 
-        private void NotifyJobCompleted(string jobName)
-        {
-            foreach (IBackupObserver observer in _observers)
-                observer.OnJobCompleted(jobName);
-        }
-
-        private void NotifyJobError(string jobName, string error)
-        {
-            foreach (IBackupObserver observer in _observers)
-                observer.OnJobError(jobName, error);
-        }
-#modification
+        private void NotifyJobStarted(string jobName) { foreach (var obs in _observers) obs.OnJobStarted(jobName); }
+        private void NotifyJobCompleted(string jobName) { foreach (var obs in _observers) obs.OnJobCompleted(jobName); }
+        private void NotifyJobStopped(string jobName) { foreach (var obs in _observers) obs.OnJobStopped(jobName); }
+        private void NotifyJobError(string jobName, string error) { foreach (var obs in _observers) obs.OnJobError(jobName, error); }
     }
 }

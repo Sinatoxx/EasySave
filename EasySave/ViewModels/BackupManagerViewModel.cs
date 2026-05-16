@@ -65,12 +65,39 @@ namespace EasySave.ViewModels
         public void ExecuteJob(int id)
         {
             var job = Jobs.FirstOrDefault(j => j.Id == id);
-            if (job != null) Task.Run(() => _backupService.Execute(job));
+            if (job != null) _ = Task.Run(() => _backupService.Execute(job));
         }
 
-        public void ExecuteJobs(List<int> ids) => Task.Run(() => _backupService.ExecuteRange(ids));
+        public void PauseJob(int id)
+        {
+            _backupService.PauseJob(id);
+            var job = Jobs.FirstOrDefault(j => j.Id == id);
+            if (job != null) System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                job.Phase = JobPhase.Paused;
+                job.StatusText = "Paused";
+            });
+        }
 
-        public void ExecuteAll() => Task.Run(() => _backupService.ExecuteAll());
+        public void ResumeJob(int id)
+        {
+            _backupService.ResumeJob(id);
+            var job = Jobs.FirstOrDefault(j => j.Id == id);
+            if (job != null) System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                job.Phase = JobPhase.Running;
+                job.StatusText = "Running...";
+            });
+        }
+
+        public void StopJob(int id)
+        {
+            _backupService.StopJob(id);
+        }
+
+        public void ExecuteJobs(List<int> ids) => _ = _backupService.ExecuteRange(ids);
+
+        public void ExecuteAll() => _ = _backupService.ExecuteAll();
 
         public List<BackupState> GetStates() => _stateService.GetAllStates();
 
@@ -91,12 +118,34 @@ namespace EasySave.ViewModels
             _configService.SaveSettings(settings);
         }
 
+        public override void OnJobStarted(string jobName)
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                var job = Jobs.FirstOrDefault(j => j.Name == jobName);
+                if (job != null) { job.Phase = JobPhase.Running; job.Progress = 0; job.StatusText = "Running..."; }
+            });
+        }
+
+        public override void OnJobStopped(string jobName)
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                var job = Jobs.FirstOrDefault(j => j.Name == jobName);
+                if (job != null) { job.Phase = JobPhase.Stopped; job.StatusText = "Stopped"; }
+            });
+        }
+
         public override void OnFileProcessed(BackupState state)
         {
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                CurrentProgress = state.Progress;
-                CurrentStatus = $"Copying: {state.CurrentSourceFile}";
+                var job = Jobs.FirstOrDefault(j => j.Name == state.JobName);
+                if (job != null)
+                {
+                    job.Progress = state.Progress;
+                    job.StatusText = $"Copying: {System.IO.Path.GetFileName(state.CurrentSourceFile)}";
+                }
             });
         }
 
@@ -104,8 +153,8 @@ namespace EasySave.ViewModels
         {
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                CurrentStatus = $"{jobName} Completed!";
-                CurrentProgress = 100;
+                var job = Jobs.FirstOrDefault(j => j.Name == jobName);
+                if (job != null) { job.Phase = JobPhase.Completed; job.Progress = 100; job.StatusText = "Completed"; }
             });
         }
 
@@ -113,7 +162,8 @@ namespace EasySave.ViewModels
         {
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                CurrentStatus = $"Error on {jobName}: {error}";
+                var job = Jobs.FirstOrDefault(j => j.Name == jobName);
+                if (job != null) { job.Phase = JobPhase.Error; job.StatusText = $"Error: {error}"; }
             });
         }
 

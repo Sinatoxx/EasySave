@@ -13,15 +13,26 @@ namespace EasySave.Strategies
             Action<BackupState>? onFileProcessed,
             Action<string>? onJobCompleted,
             BusinessAppService businessAppService,
-            CryptoService cryptoService);
+            CryptoService cryptoService,
+            JobController controller);
 
         protected abstract List<FileInfo> GetFilesToCopy(string source, string target);
 
-        protected void CopyFile(string src, string dst, string jobName, Logger logger, CryptoService cryptoService)
+        protected List<FileInfo> SortByPriority(List<FileInfo> files, CryptoService cryptoService)
+        {
+            return files
+                .OrderByDescending(f => cryptoService.IsPriority(f.FullName))
+                .ToList();
+        }
+
+        protected void CopyFile(string src, string dst, string jobName, Logger logger, CryptoService cryptoService, CancellationToken cancelToken)
         {
             long fileSize = new FileInfo(src).Length;
             long transferTime;
             long cryptoTimeMs = 0;
+
+            bool isLarge = BandwidthLimiter.IsLargeFile(fileSize);
+            if (isLarge) BandwidthLimiter.AcquireSlotForLargeFile(cancelToken);
 
             try
             {
@@ -35,6 +46,10 @@ namespace EasySave.Strategies
             catch
             {
                 transferTime = -1;
+            }
+            finally
+            {
+                if (isLarge) BandwidthLimiter.ReleaseSlotForLargeFile();
             }
 
             logger.WriteEntry(new LogEntry
