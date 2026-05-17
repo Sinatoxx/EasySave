@@ -68,6 +68,7 @@ namespace EasySave.Services
                     state => { foreach (var obs in _observers) obs.OnFileProcessed(state); },
                     jobName => { foreach (var obs in _observers) obs.OnJobCompleted(jobName); },
                     _businessAppService, _cryptoService, controller);
+                NotifyJobCompleted(job.Name);
             }
             catch (OperationCanceledException)
             {
