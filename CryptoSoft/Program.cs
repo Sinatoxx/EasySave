@@ -1,4 +1,4 @@
-﻿gusing System;
+﻿using System;
 using System.IO;
 
 namespace CryptoSoft
