@@ -118,5 +118,10 @@ namespace EasySaveGUI
         {
 
         }
+
+        private void txtName_TextChanged_1(object sender, TextChangedEventArgs e)
+        {
+
+        }
     }
 }

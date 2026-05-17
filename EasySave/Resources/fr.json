@@ -24,5 +24,9 @@
   "invalid.input": "Entree invalide.",
   "menu.log.format": "Changer le format des logs",
   "log.format.choose": "Choisissez le format des logs :",
-  "log.format.changed": "Format des logs change en :"
+  "log.format.changed": "Format des logs change en :",
+  "btn.pause": "Pause",
+  "btn.resume": "Reprendre",
+  "btn.stop": "Arrêter",
+  "status.paused": "En pause"
 }

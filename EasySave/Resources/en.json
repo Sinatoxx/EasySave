@@ -24,5 +24,9 @@
   "invalid.input": "Invalid input.",
   "menu.log.format": "Change log format",
   "log.format.choose": "Choose log format:",
-  "log.format.changed": "Log format changed to:"
+  "log.format.changed": "Log format changed to:",
+  "btn.pause": "Pause",
+  "btn.resume": "Resume",
+  "btn.stop": "Stop",
+  "status.paused": "Paused"
 }
